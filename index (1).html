@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lab Shift Forms Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#f4f7fb;--surface:#fff;--text:#14213d;--muted:#64748b;--line:#e2e8f0;--accent:#2563eb;--accent-soft:#e0eaff;color-scheme:light;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--surface:#131c2e;--text:#e8eef9;--muted:#94a3b8;--line:#243049;--accent:#60a5fa;--accent-soft:#1c2f55;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b1220;--surface:#131c2e;--text:#e8eef9;--muted:#94a3b8;--line:#243049;--accent:#60a5fa;--accent-soft:#1c2f55;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+.wrap{max-width:960px;margin:0 auto;padding:20px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+h1{font-size:1.35rem;margin:0;font-weight:700}
+.sub{color:var(--muted);font-size:.9rem;margin:2px 0 0}
+button{font:inherit;cursor:pointer}
+.btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--text);padding:9px 14px;border-radius:12px;font-weight:500;text-decoration:none}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.search{width:100%;padding:13px 16px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--text);font:inherit;margin-bottom:20px}
+.search:focus{outline:2px solid var(--accent);border-color:transparent}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.shift{display:flex;align-items:center;justify-content:space-between;text-align:left;padding:20px;border-radius:18px;border:1px solid var(--line);background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.05);transition:transform .15s,border-color .15s}
+.shift:hover{transform:translateY(-2px);border-color:var(--accent)}
+.shift .name{font-size:1.1rem;font-weight:600}
+.shift .ico{font-size:1.6rem;display:block;margin-bottom:4px}
+.count{background:var(--accent-soft);color:var(--accent);font-weight:700;border-radius:999px;padding:4px 14px;font-size:.95rem;white-space:nowrap}
+.list{display:flex;flex-direction:column;gap:10px}
+.item{display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;width:100%;padding:15px 18px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:var(--text)}
+.item:hover{border-color:var(--accent)}
+.item .t{font-weight:500}
+.tag{font-size:.75rem;color:var(--muted);display:block}
+.arrow{color:var(--accent);font-size:1.2rem}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.bar h2{margin:0;font-size:1.15rem;flex:1;min-width:160px}
+.frame{width:100%;height:calc(100vh - 190px);min-height:480px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.note{color:var(--muted);font-size:.85rem;margin:10px 2px 0}
+.empty{text-align:center;color:var(--muted);padding:40px 0}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal.open{display:flex}
+.card{background:var(--surface);border-radius:20px;padding:24px;max-width:340px;width:100%;text-align:center}
+#qr{display:flex;justify-content:center;margin:14px 0;padding:12px;background:#fff;border-radius:12px}
+#qrurl{word-break:break-all;color:var(--muted);font-size:.75rem;margin:0 0 14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>🧪 Lab Shift Forms Portal</h1>
+      <p class="sub">ระบบรวมแบบฟอร์มปฏิบัติงานประจำเวร</p>
+    </div>
+    <button class="btn" id="qrBtn">▦ QR Code</button>
+  </header>
+  <main id="app"></main>
+</div>
+
+<div class="modal" id="modal">
+  <div class="card">
+    <h3 style="margin:0">สแกนเพื่อเปิดหน้าเว็บนี้</h3>
+    <div id="qr"></div>
+    <p id="qrurl"></p>
+    <button class="btn primary" id="qrClose">ปิด</button>
+  </div>
+</div>
+
+<script>
+const SHIFTS=[
+{id:"m1",name:"เวรเช้า 1",ico:"🌅",forms:[
+["Maintenance Alinity","https://forms.gle/yTHBxEBVaoqbUm3k7"],
+["IQC Alinity","https://forms.gle/XT6V4uAJn1NMCfcW7"]]},
+{id:"m3",name:"เวรเช้า 3",ico:"☀️",forms:[
+["Internal Quality Control for Gram, AFB, KOH","https://forms.gle/rG9stYtippqaxLPq9"],
+["Maintenance BACTECH FX40","https://forms.gle/bH8SWr2adhbJ9Xv9A"]]},
+{id:"a1",name:"เวรบ่าย 1",ico:"🌤️",forms:[
+["IQC DxC 700 AU","https://forms.gle/DMyCJg8aDL8XWUEi8"],
+["Maintenance DxC 700 AU","https://forms.gle/v8vvJqCeZhgE8LeL8"],
+["IQC Blood gas","https://forms.gle/Q8sw4ebyVggnvAL38"],
+["Maintenance Standard F2400","https://forms.gle/BqGS3hqp4MM7VHxP8"],
+["Maintenance AFIAS-6","https://forms.gle/R6qoaZLKcEHR8CTt5"],
+["IQC Cobas e411","https://forms.gle/No6z9V4x1TBDxvF1A"],
+["Maintenance Cobas e 411","https://forms.gle/GsFExvqWCGTHThcV7"],
+["IQC QUO-TEST A1C","https://forms.gle/9dkHEXkj9uL2uoqq9"]]},
+{id:"a2",name:"เวรบ่าย 2",ico:"🌇",forms:[
+["Parasite FA280","https://forms.gle/UfQAmK2XmxAHfQ1v9"],
+["Maintenance Slide maker and stainer รุ่น SC-120","https://forms.gle/zzszSFfbhw9YPCw79"],
+["Maintenance LabUMat","https://forms.gle/ev6RnMsemc4PVsHE9"],
+["Maintenance Urised","https://forms.gle/GLKJfa5pGmUzZQJk9"],
+["Maintenance BC-6200","https://forms.gle/XdERVoSrjhkp9qou8"],
+["Maintenance BC-5300","https://forms.gle/wPzr8SFf59UMBx1q9"],
+["IQC of Wright-Giemsa Staining for CBC","https://forms.gle/QP6E99ZZKoKe5XW3A"]]},
+{id:"n",name:"เวรดึก",ico:"🌙",forms:[
+["Maintenance CA-600","https://forms.gle/P3FGxcTAvWEVajXK9"],
+["IQC Coagulation","https://forms.gle/xVvTrKHVsjmaYHdd6"],
+["IQC Microbilirubin","https://forms.gle/n2Pqff4myYJTMFJH8"]]}
+];
+const app=document.getElementById("app");
+let query="", openForm=null;
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const curShift=()=>SHIFTS.find(s=>s.id===location.hash.slice(1));
+
+function formItem(shift,i,f,showTag){
+  return `<button class="item" data-s="${shift.id}" data-i="${i}"><span><span class="t">${esc(f[0])}</span>${showTag?`<span class="tag">${shift.ico} ${shift.name}</span>`:""}</span><span class="arrow">›</span></button>`;
+}
+
+function render(){
+  const shift=curShift();
+  if(openForm){
+    const f=openForm.f;
+    app.innerHTML=`<div class="bar"><button class="btn" id="back">← ย้อนกลับ</button><h2>${esc(f[0])}</h2><a class="btn primary" href="${f[1]}" target="_blank" rel="noopener">เปิดทำแบบฟอร์มในแท็บใหม่ ↗</a></div>
+    <iframe class="frame" src="${f[1]}" title="${esc(f[0])}" loading="lazy"></iframe>
+    <p class="note">หากแบบฟอร์มไม่แสดง (เบราว์เซอร์อาจบล็อกการฝังลิงก์ forms.gle) กรุณากดปุ่ม “เปิดทำแบบฟอร์มในแท็บใหม่”</p>`;
+    document.getElementById("back").onclick=()=>{openForm=null;render();};
+    return;
+  }
+  if(shift){
+    app.innerHTML=`<div class="bar"><button class="btn" id="back">← หน้าหลัก</button><h2>${shift.ico} ${shift.name} <span class="count">${shift.forms.length} ฟอร์ม</span></h2></div>
+    <div class="list">${shift.forms.map((f,i)=>formItem(shift,i,f,false)).join("")}</div>`;
+    document.getElementById("back").onclick=()=>{location.hash="";};
+    bindItems();
+    return;
+  }
+  app.innerHTML=`<input class="search" id="q" type="search" placeholder="🔍 ค้นหาชื่อฟอร์ม…" value="${esc(query)}" autocomplete="off"><div id="body"></div>`;
+  const q=document.getElementById("q");
+  q.oninput=()=>{query=q.value;renderBody();};
+  renderBody();
+}
+
+function renderBody(){
+  const body=document.getElementById("body");
+  const k=query.trim().toLowerCase();
+  if(!k){
+    body.innerHTML=`<div class="grid">${SHIFTS.map(s=>`<button class="shift" data-go="${s.id}"><span><span class="ico">${s.ico}</span><span class="name">${s.name}</span></span><span class="count">${s.forms.length} ฟอร์ม</span></button>`).join("")}</div>`;
+    body.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{location.hash=b.dataset.go;});
+    return;
+  }
+  const hits=[];
+  SHIFTS.forEach(s=>s.forms.forEach((f,i)=>{if(f[0].toLowerCase().includes(k))hits.push(formItem(s,i,f,true));}));
+  body.innerHTML=hits.length?`<div class="list">${hits.join("")}</div>`:`<div class="empty">ไม่พบแบบฟอร์มที่ตรงกับ “${esc(query)}”</div>`;
+  bindItems();
+}
+
+function bindItems(){
+  document.querySelectorAll(".item").forEach(b=>b.onclick=()=>{
+    const s=SHIFTS.find(x=>x.id===b.dataset.s);
+    openForm={s,f:s.forms[+b.dataset.i]};
+    render();window.scrollTo(0,0);
+  });
+}
+
+window.addEventListener("hashchange",()=>{openForm=null;render();});
+
+// QR Code
+const modal=document.getElementById("modal");
+document.getElementById("qrBtn").onclick=()=>{
+  const url=location.href;
+  const box=document.getElementById("qr");
+  box.innerHTML="";
+  document.getElementById("qrurl").textContent=url;
+  try{new QRCode(box,{text:url,width:220,height:220,correctLevel:QRCode.CorrectLevel.M});}
+  catch(e){box.textContent="ไม่สามารถสร้าง QR Code ได้";}
+  modal.classList.add("open");
+};
+const closeQr=()=>modal.classList.remove("open");
+document.getElementById("qrClose").onclick=closeQr;
+modal.onclick=e=>{if(e.target===modal)closeQr();};
+
+render();
+</script>
+</body>
+</html>

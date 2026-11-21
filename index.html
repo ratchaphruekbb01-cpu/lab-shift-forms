@@ -120,6 +120,8 @@ const fid=f=>f[1];
 // URL ของ Google Apps Script (Web app) สำหรับเช็กสถานะจากคำตอบจริง — ใช้ได้เมื่อโฮสต์บน GitHub Pages
 const STATUS_URL="https://script.google.com/macros/s/AKfycbzb9YjnbWNcKEX0eKwnHQ34-MOOTRTAagTMkGQgiGTeIbWTamBko_hKqlsTbxD_t0Rj/exec";
 let ST={ok:false,loading:false,forms:{},un:[],at:0};
+// จำสถานะครั้งล่าสุดไว้ในเครื่อง เปิดเว็บแล้วเห็นทันที (ไม่เกิน 6 ชั่วโมง)
+try{const c=JSON.parse(localStorage.getItem("labStatus")||"null");if(c&&c.forms&&Date.now()-c.at<6*3600000){ST.forms=c.forms;ST.un=c.un||[];ST.at=c.at;ST.ok=true;ST.cached=true;}}catch(e){}
 const code=f=>f[1].split("/").pop();
 // ฟอร์มรายสัปดาห์: นับว่าทำแล้วถ้ามีคำตอบในสัปดาห์นี้ (จันทร์–อาทิตย์)
 const WEEKLY=["rG9stYtippqaxLPq9","Q8sw4ebyVggnvAL38"];
@@ -204,6 +206,7 @@ function bindItems(){
 
 function paintStatus(){
   const el=document.getElementById("st");if(!el)return;
+  if(ST.ok&&(ST.loading||ST.fail)){el.textContent=ST.loading?"⏳ กำลังอัปเดต · แสดงข้อมูลเมื่อ "+fmt(ST.at):"⚠️ อัปเดตไม่สำเร็จ · แสดงข้อมูลเมื่อ "+fmt(ST.at);return;}
   el.textContent=ST.loading?"⏳ กำลังโหลดสถานะจากคำตอบจริง…":ST.ok?"✅ เช็กจากคำตอบจริงแล้ว · อัปเดต "+fmt(ST.at):"⚠️ ยังเชื่อมต่อสถานะอัตโนมัติไม่ได้ (ใช้ติ๊กเองได้)";
 }
 function refresh(){
@@ -218,8 +221,10 @@ async function loadStatus(){
     const c=new AbortController(),t=setTimeout(()=>c.abort(),40000);
     const r=await fetch(STATUS_URL,{signal:c.signal});clearTimeout(t);
     const j=await r.json();
-    ST.forms=j.forms||{};ST.un=j.unmatched||[];ST.ok=true;ST.at=Date.now();
-  }catch(e){ST.ok=false;}
+    if(!j||!j.forms)throw new Error("format");
+    ST.forms=j.forms;ST.un=j.unmatched||[];ST.ok=true;ST.fail=false;ST.cached=false;ST.at=Date.now();
+    try{localStorage.setItem("labStatus",JSON.stringify({forms:ST.forms,un:ST.un,at:ST.at}));}catch(e2){}
+  }catch(e){ST.fail=true;if(!ST.at)ST.ok=false;}
   ST.loading=false;refresh();
 }
 window.addEventListener("hashchange",()=>{openForm=null;render();});

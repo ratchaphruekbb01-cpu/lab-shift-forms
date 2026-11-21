@@ -47,6 +47,11 @@ button{font:inherit;cursor:pointer}
 .item.done .chk{background:var(--accent);border-color:var(--accent)}
 .item.done .t{text-decoration:line-through;color:var(--muted)}
 .chk:disabled{opacity:.65;cursor:default}
+.sum{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:16px}
+.sumh{display:flex;justify-content:space-between;gap:8px;font-size:.95rem;margin-bottom:8px}
+.trk{height:10px;border-radius:99px;background:var(--accent-soft);overflow:hidden}
+.fill{height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.sumn{color:var(--muted);font-size:.8rem;margin-top:8px}
 .open{flex:1;display:flex;align-items:center;justify-content:space-between;gap:12px;background:none;border:0;color:inherit;text-align:left;padding:0;font:inherit;cursor:pointer}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
 .modal.open{display:flex}
@@ -173,13 +178,22 @@ function render(){
   renderBody();
 }
 
+function summary(){
+  const cur=SHIFTS.filter(isNow);
+  const all=cur.flatMap(s=>s.forms.map(f=>[s,f]));
+  const n=all.length,d=all.filter(([s,f])=>isDone(s,f)).length;
+  const p=n?Math.round(d*100/n):0;
+  const left=cur.map(s=>({s,k:s.forms.filter(f=>!isDone(s,f)).length})).filter(x=>x.k);
+  const tail=left.length?` · ค้างอยู่: ${left.map(x=>x.s.name+" "+x.k).join(", ")}`:(n?" · ครบทุกฟอร์มแล้ว 🎉":"");
+  return `<div class="sum"><div class="sumh"><b>ความคืบหน้าเวรปัจจุบัน</b><span>${d}/${n} ฟอร์ม · ${p}%</span></div><div class="trk"><div class="fill" style="width:${p}%"></div></div><div class="sumn">${cur.map(s=>s.name).join(" + ")}${tail}</div></div>`;
+}
 function renderBody(){
   const body=document.getElementById("body");
   const k=query.trim().toLowerCase();
   if(!k){
     const cnt=s=>doneCount(s)?`${doneCount(s)}/${s.forms.length} ทำแล้ว`:`${s.forms.length} ฟอร์ม`;
     const any=Object.keys(done).length>0;
-    body.innerHTML=`<div class="grid">${[...SHIFTS].sort((a,b)=>isNow(b)-isNow(a)).map(s=>`<button class="shift${isNow(s)?" now":""}" data-go="${s.id}"><span>${isNow(s)?`<span class="badge">● เวรปัจจุบัน</span>`:""}<span class="ico">${s.ico}</span><span class="name">${s.name}</span></span><span class="count">${cnt(s)}</span></button>`).join("")}</div>${any?`<p class="note"><button class="btn" id="reset">↺ ล้างเช็กลิสต์วันนี้</button></p>`:""}`;
+    body.innerHTML=summary()+`<div class="grid">${[...SHIFTS].sort((a,b)=>isNow(b)-isNow(a)).map(s=>`<button class="shift${isNow(s)?" now":""}" data-go="${s.id}"><span>${isNow(s)?`<span class="badge">● เวรปัจจุบัน</span>`:""}<span class="ico">${s.ico}</span><span class="name">${s.name}</span></span><span class="count">${cnt(s)}</span></button>`).join("")}</div>${any?`<p class="note"><button class="btn" id="reset">↺ ล้างเช็กลิสต์วันนี้</button></p>`:""}`;
     body.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>{location.hash=b.dataset.go;});
     const r=document.getElementById("reset");if(r)r.onclick=()=>{done={};saveDone();renderBody();};
     return;

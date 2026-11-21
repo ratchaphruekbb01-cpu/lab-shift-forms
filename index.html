@@ -46,6 +46,7 @@ button{font:inherit;cursor:pointer}
 .chk{flex:none;width:28px;height:28px;border-radius:8px;border:2px solid var(--line);background:var(--surface);color:#fff;font-weight:700;line-height:1;padding:0}
 .item.done .chk{background:var(--accent);border-color:var(--accent)}
 .item.done .t{text-decoration:line-through;color:var(--muted)}
+.chk:disabled{opacity:.65;cursor:default}
 .open{flex:1;display:flex;align-items:center;justify-content:space-between;gap:12px;background:none;border:0;color:inherit;text-align:left;padding:0;font:inherit;cursor:pointer}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
 .modal.open{display:flex}
@@ -63,6 +64,7 @@ button{font:inherit;cursor:pointer}
     </div>
     <button class="btn" id="qrBtn">▦ QR Code</button>
   </header>
+  <p class="note" id="st" style="margin:0 0 12px"></p>
   <main id="app"></main>
 </div>
 
@@ -115,14 +117,31 @@ let done={};
 try{const j=JSON.parse(localStorage.getItem("labDone")||"{}");if(j.day===dayKey())done=j.ids||{};}catch(e){}
 const saveDone=()=>{try{localStorage.setItem("labDone",JSON.stringify({day:dayKey(),ids:done}));}catch(e){}};
 const fid=f=>f[1];
-const doneCount=s=>s.forms.filter(f=>done[fid(f)]).length;
+// URL ของ Google Apps Script (Web app) สำหรับเช็กสถานะจากคำตอบจริง — ใช้ได้เมื่อโฮสต์บน GitHub Pages
+const STATUS_URL="https://script.google.com/macros/s/AKfycbzb9YjnbWNcKEX0eKwnHQ34-MOOTRTAagTMkGQgiGTeIbWTamBko_hKqlsTbxD_t0Rj/exec";
+let ST={ok:false,loading:false,forms:{},un:[],at:0};
+const code=f=>f[1].split("/").pop();
+const winStart=s=>{const d=new Date();d.setHours(HOURS[s.id][0],0,0,0);return d.getTime();};
+const winEnd=s=>{const d=new Date();d.setHours(0,0,0,0);return d.getTime()+HOURS[s.id][1]*3600000;};
+const fmt=t=>{const d=new Date(t),o={day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"};if(d.getFullYear()!==new Date().getFullYear())o.year="numeric";return d.toLocaleString("th-TH",o);};
+const autoInfo=(s,f)=>{
+  if(!ST.ok)return null;
+  const r=ST.forms[code(f)];
+  if(!r)return ST.un.includes(code(f))?{none:true,done:false}:null;
+  const bad=!!r.last&&r.last>Date.now()+3600000;
+  const last=(!r.last||bad)?null:r.last;
+  return {last,bad,done:!!last&&last>=winStart(s)&&last<winEnd(s)};
+};
+const isDone=(s,f)=>{const a=autoInfo(s,f);return !!(a&&a.done)||!!done[fid(f)];};
+const doneCount=s=>s.forms.filter(f=>isDone(s,f)).length;
 
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const curShift=()=>SHIFTS.find(s=>s.id===location.hash.slice(1));
 
 function formItem(shift,i,f,showTag){
-  const on=done[fid(f)];
-  return `<div class="item${on?" done":""}"><button class="chk" data-c="${f[1]}" aria-label="ทำแล้ว">${on?"✓":""}</button><button class="open" data-s="${shift.id}" data-i="${i}"><span><span class="t">${esc(f[0])}</span>${showTag?`<span class="tag">${shift.ico} ${shift.name}</span>`:""}</span><span class="arrow">›</span></button></div>`;
+  const a=autoInfo(shift,f),on=isDone(shift,f),auto=!!(a&&a.done);
+  const meta=a?(a.none?"ไม่พบชีตคำตอบ · ติ๊กเอง":a.bad?"วันที่ในชีตผิดปกติ":a.last?"ส่งล่าสุด "+fmt(a.last):"ยังไม่มีคำตอบ"):"";
+  return `<div class="item${on?" done":""}"><button class="chk" data-c="${f[1]}"${auto?" disabled":""} aria-label="ทำแล้ว">${on?"✓":""}</button><button class="open" data-s="${shift.id}" data-i="${i}"><span><span class="t">${esc(f[0])}</span>${showTag?`<span class="tag">${shift.ico} ${shift.name}</span>`:""}${meta?`<span class="tag">${meta}</span>`:""}</span><span class="arrow">›</span></button></div>`;
 }
 
 function render(){
@@ -179,6 +198,26 @@ function bindItems(){
   });
 }
 
+function paintStatus(){
+  const el=document.getElementById("st");if(!el)return;
+  el.textContent=ST.loading?"⏳ กำลังโหลดสถานะจากคำตอบจริง…":ST.ok?"✅ เช็กจากคำตอบจริงแล้ว · อัปเดต "+fmt(ST.at):"⚠️ ยังเชื่อมต่อสถานะอัตโนมัติไม่ได้ (ใช้ติ๊กเองได้)";
+}
+function refresh(){
+  paintStatus();
+  if(openForm)return;
+  if(curShift())render();else if(document.getElementById("body"))renderBody();
+}
+async function loadStatus(){
+  if(!STATUS_URL||ST.loading)return;
+  ST.loading=true;paintStatus();
+  try{
+    const c=new AbortController(),t=setTimeout(()=>c.abort(),40000);
+    const r=await fetch(STATUS_URL,{signal:c.signal});clearTimeout(t);
+    const j=await r.json();
+    ST.forms=j.forms||{};ST.un=j.unmatched||[];ST.ok=true;ST.at=Date.now();
+  }catch(e){ST.ok=false;}
+  ST.loading=false;refresh();
+}
 window.addEventListener("hashchange",()=>{openForm=null;render();});
 
 // QR Code
@@ -197,6 +236,9 @@ document.getElementById("qrClose").onclick=closeQr;
 modal.onclick=e=>{if(e.target===modal)closeQr();};
 
 render();
+paintStatus();loadStatus();
+setInterval(loadStatus,120000);
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&Date.now()-ST.at>60000)loadStatus();});
 </script>
 </body>
 </html>

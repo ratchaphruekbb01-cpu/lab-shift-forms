@@ -52,6 +52,9 @@ button{font:inherit;cursor:pointer}
 .trk{height:10px;border-radius:99px;background:var(--accent-soft);overflow:hidden}
 .fill{height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
 .sumn{color:var(--muted);font-size:.8rem;margin-top:8px}
+.stbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 12px}
+.stbar .note{margin:0}
+.stbar .btn{padding:6px 12px;font-size:.85rem;white-space:nowrap}
 .open{flex:1;display:flex;align-items:center;justify-content:space-between;gap:12px;background:none;border:0;color:inherit;text-align:left;padding:0;font:inherit;cursor:pointer}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
 .modal.open{display:flex}
@@ -69,7 +72,7 @@ button{font:inherit;cursor:pointer}
     </div>
     <button class="btn" id="qrBtn">▦ QR Code</button>
   </header>
-  <p class="note" id="st" style="margin:0 0 12px"></p>
+  <div class="stbar"><p class="note" id="st"></p><button class="btn" id="rf" type="button">↻ อัปเดต</button></div>
   <main id="app"></main>
 </div>
 
@@ -162,7 +165,7 @@ function render(){
     app.innerHTML=`<div class="bar"><button class="btn" id="back">← ย้อนกลับ</button><h2>${esc(f[0])}</h2><a class="btn primary" href="${f[1]}" target="_blank" rel="noopener">เปิดทำแบบฟอร์มในแท็บใหม่ ↗</a></div>
     <iframe class="frame" src="${f[1]}" title="${esc(f[0])}" loading="lazy"></iframe>
     <p class="note">หากแบบฟอร์มไม่แสดง (เบราว์เซอร์อาจบล็อกการฝังลิงก์ forms.gle) กรุณากดปุ่ม “เปิดทำแบบฟอร์มในแท็บใหม่”</p>`;
-    document.getElementById("back").onclick=()=>{openForm=null;render();};
+    document.getElementById("back").onclick=()=>{openForm=null;render();loadStatus(true);};
     return;
   }
   if(shift){
@@ -228,12 +231,12 @@ function refresh(){
   if(openForm)return;
   if(curShift())render();else if(document.getElementById("body"))renderBody();
 }
-async function loadStatus(){
+async function loadStatus(fresh){
   if(!STATUS_URL||ST.loading)return;
   ST.loading=true;paintStatus();
   try{
     const c=new AbortController(),t=setTimeout(()=>c.abort(),40000);
-    const r=await fetch(STATUS_URL,{signal:c.signal});clearTimeout(t);
+    const r=await fetch(STATUS_URL+(fresh===true?"?fresh=1":""),{signal:c.signal});clearTimeout(t);
     const j=await r.json();
     if(!j||!j.forms)throw new Error("format");
     ST.forms=j.forms;ST.un=j.unmatched||[];ST.ok=true;ST.fail=false;ST.cached=false;ST.at=Date.now();
@@ -260,8 +263,9 @@ modal.onclick=e=>{if(e.target===modal)closeQr();};
 
 render();
 paintStatus();loadStatus();
+document.getElementById("rf").onclick=()=>loadStatus(true);
 setInterval(loadStatus,120000);
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&Date.now()-ST.at>60000)loadStatus();});
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&Date.now()-ST.at>20000)loadStatus(true);});
 </script>
 </body>
 </html>
